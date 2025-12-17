@@ -1,7 +1,7 @@
 #include "inode.h"
 
 #define FUSE_USE_VERSION 317
-#define TOKEN "c4ca2959-6964-4bce-9944-dda4ae2aa7ab"
+#define TOKEN "da3db72d-3f71-4160-a24c-33acc6451e85"
 
 #include <dirent.h>
 #include <fuse_lowlevel.h>
@@ -59,10 +59,13 @@ void networkfs_lookup(fuse_req_t req, fuse_ino_t parent, const char* name) {
     struct entry_info entry;
     memcpy(&entry, &response, sizeof(entry_info));
     struct fuse_entry_param e;
+    memset(&e, 0, sizeof(e));
     e.ino = entry.ino;
     e.attr_timeout = 0;
     e.entry_timeout = 0;
-    e.attr.st_mode = entry.entry_type == 4 ? S_IFDIR : S_IFREG;
+    e.attr.st_ino = entry.ino;
+    e.attr.st_mode = entry.entry_type == 4 ? S_IFDIR | 0755 : S_IFREG | 0644;
+    e.attr.st_nlink = entry.entry_type == 4 ? 2 : 1;
     e.attr.st_size = 0;
     fuse_reply_entry(req, &e);
   }
@@ -84,16 +87,17 @@ void networkfs_getattr(fuse_req_t req, fuse_ino_t ino,
   
   struct stat stbuf = {};
   stbuf.st_ino = ino;
-  stbuf.st_nlink = 1;
   
   if (result == NFS_SUCCESS) {
     // It's a directory
     stbuf.st_mode = S_IFDIR | 0755;
+    stbuf.st_nlink = 2;
     stbuf.st_size = 0;
     fuse_reply_attr(req, &stbuf, 1.0);
   } else if (result == NFS_ENOTDIR) {
     // It's a file (not a directory)
     stbuf.st_mode = S_IFREG | 0644;
+    stbuf.st_nlink = 1;
     stbuf.st_size = 0;  // Size will be updated when file is opened/read
     fuse_reply_attr(req, &stbuf, 1.0);
   } else {
@@ -126,7 +130,7 @@ void networkfs_iterate(fuse_req_t req, fuse_ino_t i_ino, size_t size, off_t off,
       struct stat stbuf = {};
       stbuf.st_ino = e->ino;
       stbuf.st_mode = (e->entry_type == DT_DIR) ? S_IFDIR : S_IFREG;
-      stbuf.st_nlink = 1;
+      stbuf.st_nlink = (e->entry_type == DT_DIR) ? 2 : 1;
       stbuf.st_size = 0;
       
       size_t entry_size = fuse_add_direntry(req, nullptr, 0, e->name, &stbuf, i + 1);
