@@ -1,0 +1,46 @@
+stages:
+  - basic
+  - tests
+
+basic:
+  stage: basic
+  image: ghcr.io/ct-itmo/os-ubuntu-networkfs-gitlab:latest
+  timeout: 1m
+  script:
+    - |
+      # Lint source code
+      clang-format-22 --dry-run -Werror src/*.cpp src/*.h 2> clang-format.log || status=$?
+      if [ -n "$status" ]; then
+        cat clang-format.log
+        exit $status
+      fi
+    - |
+      # Check that time spent is filled in MR
+      curl -fsSL -H "JOB-TOKEN: $CI_JOB_TOKEN" "${CI_API_V4_URL}/projects/$CI_MERGE_REQUEST_PROJECT_ID/merge_requests/$CI_MERGE_REQUEST_IID" -o mr.json
+      if [ $? -ne 0 ]; then
+        echo -e "\e[31mInternal Error: Failed to fetch time stats.\e[0m You can relaunch this job or contact course staff."
+        exit 1
+      fi
+      hours=$(jq -r '.time_stats.human_total_time_spent' mr.json)
+      if [ "$hours" != "null" ] && [ -n "$hours" ]; then
+        echo "Time spent: $hours"
+      else
+        echo -e "\e[31mERROR: No time spent set in MR.\e[0m Specify it and relaunch the job."
+        exit 1
+      fi
+  only:
+    - merge_requests
+  artifacts:
+    when: on_failure
+    paths:
+      - clang-format.log
+
+tests:
+  stage: tests
+  image: ghcr.io/ct-itmo/os-ubuntu-networkfs-gitlab:latest
+  timeout: 5m
+  needs: ["basic"]
+  script:
+    - ./ci/run_tests.sh
+  only:
+   - merge_requests

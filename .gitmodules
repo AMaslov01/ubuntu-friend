@@ -1,0 +1,6 @@
+[submodule "subprojects/cpp-httplib"]
+	path = subprojects/cpp-httplib
+	url = https://github.com/yhirose/cpp-httplib.git
+[submodule "subprojects/libfuse"]
+	path = subprojects/libfuse
+	url = https://github.com/libfuse/libfuse.git
