@@ -13,7 +13,7 @@ TOKEN="da3db72d-3f71-4160-a24c-33acc6451e85"
 
 echo "✓ Got token: $TOKEN"
 echo ""
-rm -rf mnt
+
 # Step 2: Build the project
 echo "Step 2: Building the project..."
 if [ ! -d "build" ]; then
