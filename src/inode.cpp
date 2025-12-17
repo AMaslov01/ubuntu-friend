@@ -37,7 +37,6 @@ struct entries {
 
 void networkfs_init(void* userdata, struct fuse_conn_info* conn) {
   (void)userdata;
-  conn->want |= FUSE_CAP_BIG_WRITES;
   conn->want |= FUSE_CAP_EXPORT_SUPPORT;
   fprintf(stdout, "capable = %u\n", conn->capable);
 }
@@ -49,7 +48,12 @@ void networkfs_destroy(void* private_data) {
 
 void networkfs_lookup(fuse_req_t req, fuse_ino_t parent, const char* name) {
   char response[1024] = {};
-  if (networkfs_http_call(TOKEN, "lookup", &response, sizeof(response), {{"parent", ino_to_string(parent)}, {"name", name}})) {
+  char ino_str[21];
+  ino_to_string(ino_str, parent);
+  std::vector<std::pair<std::string, std::string>> args;
+  args.emplace_back("parent", ino_str);
+  args.emplace_back("name", name);
+  if (networkfs_http_call(TOKEN, "lookup", response, sizeof(response), args)) {
     fuse_reply_err(req, ENOENT);
   } else{
     struct entry_info entry;
@@ -80,8 +84,9 @@ void networkfs_iterate(fuse_req_t req, fuse_ino_t i_ino, size_t size, off_t off,
   ino_to_string(ino_str, i_ino);
   
   char response[sizeof(struct entries)] = {};
-  
-  if (networkfs_http_call(TOKEN, "list", response, sizeof(response), {{"inode", ino_str}})) {
+  std::vector<std::pair<std::string, std::string>> args;
+  args.emplace_back("inode", ino_str);
+  if (networkfs_http_call(TOKEN, "list", response, sizeof(response), args)) {
     fuse_reply_err(req, ENOENT);
   } else {
     struct entries dir_entries;
@@ -195,15 +200,16 @@ void networkfs_fsync(fuse_req_t req, fuse_ino_t ino, int datasync,
   fuse_reply_err(req, 0);
 }
 
-void networkfs_setattr(fuse_req_t req, fuse_ino_t ino, struct fuse_darwin_attr* attr,
-                       int to_set, struct fuse_file_info* fi) {
-  (void)ino;
-  (void)attr;
-  (void)to_set;
-  (void)fi;
-  // TODO: Implement setattr
-  fuse_reply_err(req, ENOSYS);
+void networkfs_setattr(fuse_req_t req, fuse_ino_t ino, struct stat* attr,
+  int to_set, struct fuse_file_info* fi) {
+(void)ino;
+(void)attr;
+(void)to_set;
+(void)fi;
+// TODO: Implement setattr
+fuse_reply_err(req, ENOSYS);
 }
+
 
 void networkfs_link(fuse_req_t req, fuse_ino_t ino, fuse_ino_t newparent,
                     const char* name) {
