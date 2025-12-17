@@ -7,14 +7,9 @@ echo "=== NetworkFS Testing Script ==="
 echo ""
 
 # Step 1: Get a token
-echo "Step 1: Getting a token from the API..."
-TOKEN_RESPONSE=$(curl -s "https://nerc.itmo.ru/teaching/os/networkfs/v1/token/issue?json")
-TOKEN=$(echo "$TOKEN_RESPONSE" | grep -o '"response":"[^"]*"' | cut -d'"' -f4)
+TOKEN="da3db72d-3f71-4160-a24c-33acc6451e85"
 
-if [ -z "$TOKEN" ]; then
-    echo "ERROR: Failed to get token. Response: $TOKEN_RESPONSE"
-    exit 1
-fi
+
 
 echo "✓ Got token: $TOKEN"
 echo ""
