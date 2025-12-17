@@ -70,10 +70,35 @@ void networkfs_lookup(fuse_req_t req, fuse_ino_t parent, const char* name) {
 
 void networkfs_getattr(fuse_req_t req, fuse_ino_t ino,
                        struct fuse_file_info* fi) {
-  (void)ino;
   (void)fi;
-  // TODO: Implement getattr
-  fuse_reply_err(req, ENOENT);
+  
+  char response[1024] = {};
+  char ino_str[21];
+  ino_to_string(ino_str, ino);
+  
+  std::vector<std::pair<std::string, std::string>> args;
+  args.emplace_back("inode", ino_str);
+  
+  // Try to list the inode as a directory to determine its type
+  int64_t result = networkfs_http_call(TOKEN, "list", response, sizeof(response), args);
+  
+  struct stat stbuf = {};
+  stbuf.st_ino = ino;
+  stbuf.st_nlink = 1;
+  
+  if (result == NFS_SUCCESS) {
+    // It's a directory
+    stbuf.st_mode = S_IFDIR | 0755;
+    stbuf.st_size = 0;
+    fuse_reply_attr(req, &stbuf, 1.0);
+  } else if (result == NFS_ENOTDIR) {
+    // It's a file (not a directory)
+    stbuf.st_mode = S_IFREG | 0644;
+    stbuf.st_size = 0;  // Size will be updated when file is opened/read
+    fuse_reply_attr(req, &stbuf, 1.0);
+  } else {
+    fuse_reply_err(req, ENOENT);
+  }
 }
 
 void networkfs_iterate(fuse_req_t req, fuse_ino_t i_ino, size_t size, off_t off,
