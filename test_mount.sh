@@ -13,7 +13,8 @@ TOKEN="da3db72d-3f71-4160-a24c-33acc6451e85"
 
 echo "✓ Got token: $TOKEN"
 echo ""
-
+fusermount3 -u mnt
+rm -rf mnt
 # Step 2: Build the project
 echo "Step 2: Building the project..."
 if [ ! -d "build" ]; then
@@ -34,6 +35,7 @@ echo "Step 3: Creating mount point..."
 mkdir -p mnt
 echo "✓ Mount point ready: ./mnt"
 echo ""
+NETWORKFS_TOKEN=da3db72d-3f71-4160-a24c-33acc6451e85 ./build/networkfs mnt
 
 # Step 4: Mount the filesystem
 echo "Step 4: Mounting filesystem..."

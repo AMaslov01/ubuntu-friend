@@ -1,7 +1,6 @@
 #include "inode.h"
 
 #define FUSE_USE_VERSION 317
-#define TOKEN "da3db72d-3f71-4160-a24c-33acc6451e85"
 
 #include <dirent.h>
 #include <fuse_lowlevel.h>
@@ -47,13 +46,14 @@ void networkfs_destroy(void* private_data) {
 }
 
 void networkfs_lookup(fuse_req_t req, fuse_ino_t parent, const char* name) {
+  const char* token = (const char*)fuse_req_userdata(req);
   char response[1024] = {};
   char ino_str[21];
   ino_to_string(ino_str, parent);
   std::vector<std::pair<std::string, std::string>> args;
   args.emplace_back("parent", ino_str);
   args.emplace_back("name", name);
-  if (networkfs_http_call(TOKEN, "lookup", response, sizeof(response), args)) {
+  if (networkfs_http_call(token, "lookup", response, sizeof(response), args)) {
     fuse_reply_err(req, ENOENT);
   } else{
     struct entry_info entry;
@@ -74,6 +74,7 @@ void networkfs_lookup(fuse_req_t req, fuse_ino_t parent, const char* name) {
 void networkfs_getattr(fuse_req_t req, fuse_ino_t ino,
                        struct fuse_file_info* fi) {
   (void)fi;
+  const char* token = (const char*)fuse_req_userdata(req);
   
   char response[1024] = {};
   char ino_str[21];
@@ -83,7 +84,7 @@ void networkfs_getattr(fuse_req_t req, fuse_ino_t ino,
   args.emplace_back("inode", ino_str);
   
   // Try to list the inode as a directory to determine its type
-  int64_t result = networkfs_http_call(TOKEN, "list", response, sizeof(response), args);
+  int64_t result = networkfs_http_call(token, "list", response, sizeof(response), args);
   
   struct stat stbuf = {};
   stbuf.st_ino = ino;
@@ -108,6 +109,7 @@ void networkfs_getattr(fuse_req_t req, fuse_ino_t ino,
 void networkfs_iterate(fuse_req_t req, fuse_ino_t i_ino, size_t size, off_t off,
                        struct fuse_file_info* fi) {
   (void)fi;
+  const char* token = (const char*)fuse_req_userdata(req);
   
   char ino_str[21];
   ino_to_string(ino_str, i_ino);
@@ -115,7 +117,7 @@ void networkfs_iterate(fuse_req_t req, fuse_ino_t i_ino, size_t size, off_t off,
   char response[sizeof(struct entries)] = {};
   std::vector<std::pair<std::string, std::string>> args;
   args.emplace_back("inode", ino_str);
-  if (networkfs_http_call(TOKEN, "list", response, sizeof(response), args)) {
+  if (networkfs_http_call(token, "list", response, sizeof(response), args)) {
     fuse_reply_err(req, ENOENT);
   } else {
     struct entries dir_entries;
